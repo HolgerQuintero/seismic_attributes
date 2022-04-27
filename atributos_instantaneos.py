@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on Tue Aug 24 10:05:06 2021
 
@@ -7,6 +6,26 @@ Created on Tue Aug 24 10:05:06 2021
 import numpy as np
 from scipy import signal
 from scipy.ndimage import gaussian_filter1d
+from scipy.fftpack import fft,ifft
+
+def hilbert_from_scratch(u,Nt,Nx):
+    # N : fft length
+    # M : number of elements to zero out
+    # U : DFT of u
+    # v : IDFT of H(U)
+    v=np.zeros((Nt,Nx),dtype = "complex_")
+    for i in np.arange(0,Nx):
+     N = len(u[:,i])
+     # take forward Fourier transform
+     U = fft(u[:,i])
+     M = N - N//2 - 1
+     # zero out negative frequency components
+     U[N//2+1:] = [0] * M
+     # double fft energy except @ DC0
+     U[1:N//2] = 2 * U[1:N//2]
+     # take inverse Fourier transform
+     v[:,i] = ifft(U)
+    return v
 
 
 #%%ATRIBUTOS INSTANTANEOS.
@@ -15,41 +34,44 @@ def atributos_instantaneos(Data,dt,dx,Lx,Lt):
     Nt=Data.shape[0];Nx=Data.shape[1]
     #Componente vertical
     Z=Data[:,:,0]
-    dv=signal.hilbert2(Z)#Otra vez transformada Hilbert
+    dv=hilbert_from_scratch(Z,Nt,Nx)#Otra vez transformada Hilbert
+    '''
     for i in np.arange(0,Nt):
         for j in np.arange(0,Nx):
             if Z[i,j]<1e-5:
                 dv[i,j]=np.complex(0,np.imag(dv[i,j]))
             else:
                 dv[i,j]=np.complex(Z[i,j],np.imag(dv[i,j]))
-            
+     '''       
     Av=np.abs(dv)
     phiv=np.angle(dv)
-    dphiv=np.arcsin(np.sin(np.diff(phiv,1,1)))
+    dphiv=np.arcsin(np.sin(np.diff(phiv,1,axis=1)))
     temp=dphiv[:,-1]
     
     dphiv=np.concatenate((dphiv,temp.reshape(Nt,1)),axis=1)
-    fv=abs(fs/(2*np.pi)*np.diff(np.unwrap(np.angle(dv))))
-    temp=fv[:,-1]
-    fv=np.concatenate((fv,temp.reshape(Nt,1)),axis=1)
+    fv=abs(fs/(2*np.pi)*np.diff(np.unwrap(np.angle(dv),axis=0),n=1,axis=0))
+    temp=fv[-1,:]
+    fv=np.concatenate((fv,temp.reshape(1,Nx)),axis=0)
     
     #Componente radial    
     X=Data[:,:,1]
-    dr=signal.hilbert2(X)
+    dr=hilbert_from_scratch(X,Nt,Nx)
+    '''
     for i in np.arange(0,Nt):
         for j in np.arange(0,Nx):
             if X[i,j]<1e-5:
                 dr[i,j]=np.complex(0,np.imag(dr[i,j]))
             else:
                 dr[i,j]=np.complex(X[i,j],np.imag(dr[i,j]))
+                '''
     Ah=np.abs(dr)
     phir=np.angle(dr)
     dphir=np.arcsin(np.sin(np.diff(phir,1,1)))
     temp=dphir[:,-1]
     dphir=np.concatenate((dphir,temp.reshape(Nt,1)),axis=1)
-    fr=abs(fs/(2*np.pi)*np.diff(np.unwrap(np.unwrap(np.angle(dr)))))
-    temp=fr[:,-1]
-    fr=np.concatenate((fr,temp.reshape(Nt,1)),axis=1)
+    fr=abs(fs/(2*np.pi)*np.diff(np.unwrap(np.angle(dr),axis=0),n=1,axis=0))
+    temp=fr[-1,:]
+    fr=np.concatenate((fr,temp.reshape(1,Nx)),axis=0)
     fh=fr 
 
     #Polarization attributes
@@ -61,9 +83,9 @@ def atributos_instantaneos(Data,dt,dx,Lx,Lt):
     S2=2*Av*Ah*np.cos(phi)
     a=np.sqrt((1/2)*(S0+np.sqrt(S1*S1+S2*S2)))
     b=np.real(np.sqrt(np.abs((1/2)*(S0-np.sqrt(S1*S1+S2*S2)))))
-    rho=b/a
+    rho=b/(a)
     sigma=np.sign(phi)*rho;
-    tau=(1/2)*np.arctan(S2/S1)
+    tau=(1/2)*np.arctan(S2/(S1))
     temp1=tau>=0
     temp2=tau<=np.pi/2
     temp3=tau>=-np.pi/2
@@ -73,8 +95,7 @@ def atributos_instantaneos(Data,dt,dx,Lx,Lt):
     np.where(temp3 == True, 1, 0)
     np.where(temp4 == True, 1, 0)
     gamma=(np.pi/2-tau)*temp1*temp2+(-np.pi/2-tau)*temp3*temp4
-    
-    Lx=2
+
     Av=gaussian_filter1d(Av,sigma=Lx)
     Ah=gaussian_filter1d(Ah,sigma=Lx)
     fv=gaussian_filter1d(fv,sigma=Lx)
