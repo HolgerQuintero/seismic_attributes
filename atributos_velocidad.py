@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on Tue Aug 24 10:26:23 2021
 
@@ -47,7 +46,7 @@ def atributos_velocidad(Data,dt,dx,si,sox,soy):
     x=np.arange(-2*si,2*si+1)
     g=np.exp(-0.5*(x/si)*(x/si))
     g=g/np.sum(g)
-    gd=-x*g/si
+    gd=-(x*g)/si
     Ix=signal.convolve2d( signal.convolve2d(I,gd.reshape(1,gd.shape[0]),'same'),g.reshape(g.shape[0],1),'same')
     Iy=signal.convolve2d( signal.convolve2d(I,gd.reshape(gd.shape[0],1),'same'),g.reshape(1,g.shape[0]),'same')
 
@@ -70,11 +69,11 @@ def atributos_velocidad(Data,dt,dx,si,sox,soy):
     for ix in np.arange(n):
         for it in np.arange(m):
             S_v=np.array([[Sxx_v[it,ix],Sxy_v[it,ix]],[Sxy_v[it,ix],Syy_v[it,ix]]])
-            (lambda_,vel)=np.linalg.eig(S_v)
-            vv[it,ix]=(vel[0,1]*dx)/(vel[1,1]*dt)
+            (lambda_,vel)=np.linalg.eigh(S_v)
+            vv[it,ix]=(vel[0,0]*dx)/(vel[0,1]*dt)
             S_h=np.array([[Sxx_h[it,ix],Sxy_h[it,ix]],[Sxy_h[it,ix],Syy_h[it,ix]]])
-            (lambda_,vel)=np.linalg.eig(S_h)
-            vh[it,ix]=(vel[0,1]*dx)/(vel[1,1]*dt)
+            (lambda_,vel)=np.linalg.eigh(S_h)
+            vh[it,ix]=(vel[0,0]*dx)/(vel[0,1]*dt)
       
     attribute_velocity=np.zeros((m,n,2))
     attribute_velocity[:,:,0]=vv
