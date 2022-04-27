@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
 """
 Created on Tue Aug 24 10:11:18 2021
 
 @author: HOLGER
 """
 import numpy as np
-from scipy.ndimage import gaussian_filter1d
+from scipy.ndimage import gaussian_filter
 
 
 #%% Centoride
@@ -24,14 +23,15 @@ def centroidef(Dataz,Nw,fs):
         
         c[n,0]=num/den
     
-    for i in np.arange(0,c.shape[0]):
-    #    if c[i,0]>25:
-     #       c[i,0]=(c[i-3,0]+c[i-2,0]+c[i-1,0]+c[i-4,0]+c[i,0])/5
-        if c[i,0]>Nw/2:
-            c[i,0]=Nw/2
-        if c[i,0]==Nw/2:
-            c[i,0]=(c[i-3,0]+c[i-2,0]+c[i-1,0]+c[i-4,0]+c[i,0])/5
-            
-    c=gaussian_filter1d(c,sigma=np.round(Nw/2))
+    for i in np.arange(0,c.size):
+      if np.isnan(c[i]):
+        c[i]=0
+    zero=c[np.nonzero(c)[0][0]]
+    for i in np.arange(0,c.size):
+      if c[i]==0:
+        c[i]=zero
+        
+    ans=gaussian_filter(c,np.round(Nw/2),mode='reflect')
     
-    return(c)
+    return(ans)
+
